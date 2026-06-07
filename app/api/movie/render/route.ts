@@ -33,6 +33,12 @@ function detectKind(file: File): AssetKind | null {
   return null;
 }
 
+function parseNumber(value: FormDataEntryValue | null): number | undefined {
+  if (typeof value !== "string" || value.trim() === "") return undefined;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 async function saveFile(file: File, directory: string, jobId: string, index: number) {
   const storedName = `${jobId}-${String(index).padStart(3, "0")}-${sanitizeFileName(file.name)}`;
   const filePath = path.join(directory, storedName);
@@ -53,7 +59,13 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const templateId = String(formData.get("templateId") ?? "exam-camp-emotional");
     const files = formData.getAll("assets").filter((value): value is File => value instanceof File);
+    const sceneNotes = formData.getAll("sceneNotes").map((value) => String(value ?? ""));
     const bgm = formData.get("bgm");
+    const bgmStartSeconds = parseNumber(formData.get("bgmStartSeconds"));
+    const bgmEndSeconds = parseNumber(formData.get("bgmEndSeconds"));
+    const bgmNote = String(formData.get("bgmNote") ?? "");
+    const storyInstruction = String(formData.get("storyInstruction") ?? "");
+    const editInstruction = String(formData.get("editInstruction") ?? "");
     const jobId = crypto.randomUUID();
 
     if (files.length === 0) {
@@ -80,7 +92,8 @@ export async function POST(request: Request) {
         publicUrl: isVercelRuntime ? "" : `/uploads/${saved.storedName}`,
         type: kind,
         order: index + 1,
-        mimeType: file.type
+        mimeType: file.type,
+        sceneNote: sceneNotes[index]?.trim() || undefined
       });
     }
 
@@ -98,7 +111,12 @@ export async function POST(request: Request) {
       jobId,
       templateId,
       assets: organizedAssets,
-      bgmPath
+      bgmPath,
+      bgmStartSeconds,
+      bgmEndSeconds,
+      bgmNote,
+      storyInstruction,
+      editInstruction
     });
 
     return NextResponse.json({

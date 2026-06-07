@@ -9,6 +9,7 @@ export type UploadedAsset = {
   type: AssetKind;
   order: number;
   mimeType: string;
+  sceneNote?: string;
 };
 
 export type RenderMovieInput = {
@@ -16,6 +17,11 @@ export type RenderMovieInput = {
   templateId: string;
   assets: UploadedAsset[];
   bgmPath?: string;
+  bgmStartSeconds?: number;
+  bgmEndSeconds?: number;
+  bgmNote?: string;
+  storyInstruction?: string;
+  editInstruction?: string;
 };
 
 export type RenderMovieResult = {

@@ -17,6 +17,10 @@ function escapeDrawText(text: string): string {
   return text.replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/'/g, "\\'");
 }
 
+function compactCaption(caption: string): string {
+  return caption.replace(/\s+/g, " ").trim().slice(0, 72);
+}
+
 function getFontOption(): string {
   const candidates = [
     process.env.FFMPEG_FONT_PATH,
@@ -55,22 +59,22 @@ async function getVideoDuration(filePath: string): Promise<number> {
 }
 
 function makeTextFilter(caption: string): string {
-  const safeCaption = escapeDrawText(caption);
+  const safeCaption = escapeDrawText(compactCaption(caption));
   const fontOption = getFontOption();
   return [
     "scale=1920:1080:force_original_aspect_ratio=decrease",
     "pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=#111827",
     "setsar=1",
     "format=yuv420p",
-    `drawbox=x=0:y=820:w=1920:h=170:color=black@0.42:t=fill`,
+    "drawbox=x=0:y=820:w=1920:h=170:color=black@0.42:t=fill",
     `drawtext=text='${safeCaption}'${fontOption}:fontcolor=white:fontsize=52:line_spacing=12:x=(w-text_w)/2:y=872:box=0`
   ].join(",");
 }
 
 async function renderTitleClip(workDir: string, fileName: string, title: string, caption: string, seconds = 4) {
   const outputPath = path.join(workDir, fileName);
-  const titleText = escapeDrawText(title);
-  const captionText = escapeDrawText(caption);
+  const titleText = escapeDrawText(compactCaption(title));
+  const captionText = escapeDrawText(compactCaption(caption));
   const fontOption = getFontOption();
 
   await runFfmpeg([
@@ -95,12 +99,7 @@ async function renderTitleClip(workDir: string, fileName: string, title: string,
   return outputPath;
 }
 
-async function renderAssetClip(
-  workDir: string,
-  index: number,
-  asset: UploadedAsset,
-  caption: string
-): Promise<string> {
+async function renderAssetClip(workDir: string, index: number, asset: UploadedAsset, caption: string): Promise<string> {
   const outputPath = path.join(workDir, `clip-${String(index).padStart(3, "0")}.mp4`);
   const textFilter = makeTextFilter(caption);
 
@@ -155,21 +154,15 @@ async function concatClips(workDir: string, clips: string[], outputPath: string)
   const lines = clips.map((clip) => `file '${normalizeForFfmpeg(clip)}'`).join("\n");
   await writeFile(concatFile, lines, "utf8");
 
-  await runFfmpeg([
-    "-y",
-    "-f",
-    "concat",
-    "-safe",
-    "0",
-    "-i",
-    concatFile,
-    "-c",
-    "copy",
-    outputPath
-  ]);
+  await runFfmpeg(["-y", "-f", "concat", "-safe", "0", "-i", concatFile, "-c", "copy", outputPath]);
 }
 
-async function addBgm(videoPath: string, bgmPath: string, outputPath: string) {
+async function addBgm(videoPath: string, bgmPath: string, outputPath: string, startSeconds = 0, endSeconds?: number) {
+  const safeStart = Math.max(0, startSeconds);
+  const delayMs = Math.round(safeStart * 1000);
+  const trimPart = endSeconds && endSeconds > safeStart ? `,atrim=0:${(endSeconds - safeStart).toFixed(2)}` : "";
+  const audioFilter = `[1:a]volume=0.18${trimPart},asetpts=PTS-STARTPTS,adelay=${delayMs}|${delayMs}[a]`;
+
   await runFfmpeg([
     "-y",
     "-i",
@@ -179,12 +172,11 @@ async function addBgm(videoPath: string, bgmPath: string, outputPath: string) {
     "-i",
     bgmPath,
     "-filter_complex",
-    "[1:a]volume=0.18[a]",
+    audioFilter,
     "-map",
     "0:v:0",
     "-map",
     "[a]",
-    "-shortest",
     "-c:v",
     "copy",
     "-c:a",
@@ -195,39 +187,53 @@ async function addBgm(videoPath: string, bgmPath: string, outputPath: string) {
   ]);
 }
 
+function buildAssetCaption(asset: UploadedAsset, fallbackCaption: string, storyInstruction?: string) {
+  const parts = [asset.sceneNote ? `${asset.sceneNote}:` : "", fallbackCaption];
+  if (storyInstruction) parts.push(`構成意図: ${storyInstruction}`);
+  return parts.filter(Boolean).join(" ");
+}
+
 export async function renderMovie(input: RenderMovieInput): Promise<RenderMovieResult> {
   if (input.assets.length === 0) {
     throw new Error("動画にする素材を1つ以上アップロードしてください。");
   }
 
   const template = getMovieTemplate(input.templateId);
+  const storyInstruction = input.storyInstruction?.trim();
+  const editInstruction = input.editInstruction?.trim();
+  const bgmNote = input.bgmNote?.trim();
   const workDir = await mkdtemp(path.join(os.tmpdir(), `movie-${input.jobId}-`));
   const fileName = `${input.jobId}.mp4`;
   const outputPath = path.join(publicOutputDir, fileName);
 
   try {
     const clips: string[] = [];
-    clips.push(
-      await renderTitleClip(
-        workDir,
-        "clip-000-title.mp4",
-        template.title,
-        template.chapters[0]?.caption ?? template.tone
-      )
-    );
+    const openingCaption = [
+      template.chapters[0]?.caption ?? template.tone,
+      storyInstruction ? `構成メモ: ${storyInstruction}` : ""
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    clips.push(await renderTitleClip(workDir, "clip-000-title.mp4", template.title, openingCaption));
 
     for (const [index, asset] of input.assets.entries()) {
       const chapter = template.chapters[(index % Math.max(template.chapters.length - 2, 1)) + 1];
-      clips.push(await renderAssetClip(workDir, index + 1, asset, chapter.caption));
+      clips.push(await renderAssetClip(workDir, index + 1, asset, buildAssetCaption(asset, chapter.caption, storyInstruction)));
     }
 
-    clips.push(await renderTitleClip(workDir, "clip-999-ending.mp4", template.ending, "ご視聴ありがとうございました", 4));
+    const endingCaption = editInstruction
+      ? `再編集メモ: ${editInstruction}`
+      : bgmNote
+        ? `BGM指定: ${bgmNote}`
+        : "ご視聴ありがとうございました";
+    clips.push(await renderTitleClip(workDir, "clip-999-ending.mp4", template.ending, endingCaption, 4));
 
     const silentPath = path.join(workDir, "silent.mp4");
     await concatClips(workDir, clips, silentPath);
 
     if (input.bgmPath) {
-      await addBgm(silentPath, input.bgmPath, outputPath);
+      await addBgm(silentPath, input.bgmPath, outputPath, input.bgmStartSeconds, input.bgmEndSeconds);
     } else {
       await copyFile(silentPath, outputPath);
     }
