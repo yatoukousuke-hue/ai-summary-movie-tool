@@ -12,15 +12,20 @@ function firstExisting(paths: Array<string | undefined>) {
   return paths.find((candidate) => candidate && existsSync(candidate));
 }
 
-const localFfmpegPath = path.join(process.cwd(), "node_modules", "ffmpeg-static", "ffmpeg.exe");
+const localFfmpegPath = path.join(
+  process.cwd(),
+  "node_modules",
+  "ffmpeg-static",
+  process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg"
+);
 const localFfprobePath = path.join(
   process.cwd(),
   "node_modules",
   "ffprobe-static",
   "bin",
-  "win32",
+  process.platform,
   process.arch === "ia32" ? "ia32" : "x64",
-  "ffprobe.exe"
+  process.platform === "win32" ? "ffprobe.exe" : "ffprobe"
 );
 
 export const ffmpegPath =

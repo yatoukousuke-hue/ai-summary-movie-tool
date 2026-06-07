@@ -16,3 +16,4 @@ public/output/*
 
 .vercel/
 npm-debug.log*
+.codex-vercel-hostname-patch.cjs

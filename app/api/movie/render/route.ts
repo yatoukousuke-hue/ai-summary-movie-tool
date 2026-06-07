@@ -13,6 +13,7 @@ export const maxDuration = 60;
 const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const videoTypes = new Set(["video/mp4", "video/quicktime", "video/webm"]);
 const audioTypes = new Set(["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/mp4", "audio/aac"]);
+const shouldReturnVideoDataUrl = isVercelRuntime || process.env.RETURN_VIDEO_DATA_URL === "true";
 
 function sanitizeFileName(fileName: string) {
   const ext = path.extname(fileName).toLowerCase();
@@ -102,8 +103,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       status: "完了",
-      outputUrl: isVercelRuntime ? "" : result.outputUrl,
-      videoDataUrl: isVercelRuntime ? await makeVideoDataUrl(result.outputPath) : undefined,
+      outputUrl: shouldReturnVideoDataUrl ? "" : result.outputUrl,
+      videoDataUrl: shouldReturnVideoDataUrl ? await makeVideoDataUrl(result.outputPath) : undefined,
       fileName: result.fileName,
       assets
     });

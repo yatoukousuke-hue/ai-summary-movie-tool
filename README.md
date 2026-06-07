@@ -50,13 +50,18 @@ PowerShellで `npm` が実行できない場合は、以下のように `npm.cmd
 FFMPEG_PATH=C:\ffmpeg\bin\ffmpeg.exe
 FFPROBE_PATH=C:\ffmpeg\bin\ffprobe.exe
 ENABLE_AI_ANALYSIS=false
+RETURN_VIDEO_DATA_URL=false
 ```
 
 ## Vercel公開時の注意
 
-Vercel上では書き込み可能な一時ディレクトリで動画を生成し、小さなmp4はAPIレスポンスとしてブラウザに返します。デモや短い素材の確認には使えますが、3〜5分の本番動画、大量素材、大容量アップロードにはVercel Serverlessの実行時間・リクエストサイズ制限が厳しくなります。
+VercelはUI確認用のデモ公開先として使えます。ただし、サーバー側FFmpegの実行ファイルをServerless Functionへ含めるとサイズ上限に当たりやすいため、Vercel単体での動画生成は推奨しません。
 
 先生方が日常的に使う本運用では、Renderなどの常駐サーバー、またはVercelのUI + 専用FFmpegバックエンド + 適切なストレージ構成を推奨します。どの構成でも、初期状態では外部AI APIへ素材を送信しません。
+
+## Renderで動かす場合
+
+`render.yaml` を用意しています。GitHubへpushしたあと、Render DashboardでBlueprintとして読み込むとWeb Serviceを作れます。Renderでは `RETURN_VIDEO_DATA_URL=true` を設定しているため、生成mp4をAPIレスポンスとしてブラウザに返します。
 
 ## ディレクトリ構成
 

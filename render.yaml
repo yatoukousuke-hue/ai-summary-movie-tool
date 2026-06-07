@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: ai-summary-movie-tool
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ENABLE_AI_ANALYSIS
+        value: "false"
+      - key: RETURN_VIDEO_DATA_URL
+        value: "true"
