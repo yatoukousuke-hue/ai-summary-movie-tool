@@ -12,6 +12,7 @@ const HEIGHT = 1080;
 const FPS = 30;
 const IMAGE_SECONDS = 4;
 const VIDEO_SECONDS = 7;
+const H264_FAST_QUALITY_ARGS = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-threads", "0"];
 
 function escapeDrawText(text: string): string {
   return text.replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/'/g, "\\'");
@@ -88,8 +89,7 @@ async function renderTitleClip(workDir: string, fileName: string, title: string,
       `drawtext=text='${titleText}'${fontOption}:fontcolor=white:fontsize=86:x=(w-text_w)/2:y=410`,
       `drawtext=text='${captionText}'${fontOption}:fontcolor=#e8f5f3:fontsize=46:x=(w-text_w)/2:y=535`
     ].join(","),
-    "-c:v",
-    "libx264",
+    ...H264_FAST_QUALITY_ARGS,
     "-pix_fmt",
     "yuv420p",
     "-an",
@@ -116,8 +116,7 @@ async function renderAssetClip(workDir: string, index: number, asset: UploadedAs
       `${textFilter},fade=t=in:st=0:d=0.45,fade=t=out:st=${IMAGE_SECONDS - 0.55}:d=0.55`,
       "-r",
       String(FPS),
-      "-c:v",
-      "libx264",
+      ...H264_FAST_QUALITY_ARGS,
       "-pix_fmt",
       "yuv420p",
       "-an",
@@ -138,8 +137,7 @@ async function renderAssetClip(workDir: string, index: number, asset: UploadedAs
     `${textFilter},fade=t=in:st=0:d=0.35,fade=t=out:st=${Math.max(duration - 0.5, 0.4).toFixed(2)}:d=0.5`,
     "-r",
     String(FPS),
-    "-c:v",
-    "libx264",
+    ...H264_FAST_QUALITY_ARGS,
     "-pix_fmt",
     "yuv420p",
     "-an",
@@ -183,6 +181,8 @@ async function addBgm(videoPath: string, bgmPath: string, outputPath: string, st
     "aac",
     "-b:a",
     "160k",
+    "-movflags",
+    "+faststart",
     outputPath
   ]);
 }

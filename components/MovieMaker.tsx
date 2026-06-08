@@ -10,6 +10,9 @@ import {
   Music,
   PencilLine,
   RefreshCw,
+  ArrowDown,
+  ArrowUp,
+  Trash2,
   Upload,
   Wand2
 } from "lucide-react";
@@ -35,6 +38,14 @@ const progressLabels: Record<ProgressState, string> = {
   error: "エラー"
 };
 
+const sceneQuickNotes = ["集中して勉強", "先生の激励", "仲間と笑顔", "集合写真", "最後の振り返り"];
+const storyQuickInstructions = [
+  "前半は緊張感、後半は達成感を強める",
+  "仲間と乗り越えた雰囲気を大切にする",
+  "先生と保護者への感謝で締める"
+];
+const bgmQuickNotes = ["前半は静かに、後半で盛り上げる", "集合写真から音楽を強めたい", "最後は余韻が残る雰囲気にする"];
+
 function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -48,10 +59,18 @@ function estimateMovieSeconds(assets: LocalAsset[]) {
 function estimateRenderMinutes(assets: LocalAsset[], hasBgm: boolean) {
   if (assets.length === 0) return "素材を追加すると表示されます";
   const movieSeconds = estimateMovieSeconds(assets);
-  const processingSeconds = Math.ceil(movieSeconds * 1.4 + assets.length * 8 + (hasBgm ? 20 : 0));
+  const processingSeconds = Math.ceil(movieSeconds * 0.95 + assets.length * 5 + (hasBgm ? 14 : 0));
   const min = Math.max(1, Math.floor(processingSeconds / 60));
   const max = Math.max(min + 1, Math.ceil(processingSeconds / 45));
   return `約${min}〜${max}分`;
+}
+
+function renumberAssets(nextAssets: LocalAsset[]) {
+  return nextAssets.map((asset, index) => ({ ...asset, order: index + 1 }));
+}
+
+function appendInstruction(current: string, addition: string) {
+  return current.trim() ? `${current.trim()} / ${addition}` : addition;
 }
 
 export function MovieMaker() {
@@ -97,6 +116,27 @@ export function MovieMaker() {
 
   function updateAssetSceneNote(id: string, sceneNote: string) {
     setAssets((current) => current.map((asset) => (asset.id === id ? { ...asset, sceneNote } : asset)));
+  }
+
+  function removeAsset(id: string) {
+    setAssets((current) => {
+      const removed = current.find((asset) => asset.id === id);
+      if (removed) URL.revokeObjectURL(removed.url);
+      return renumberAssets(current.filter((asset) => asset.id !== id));
+    });
+    setOutputUrl("");
+  }
+
+  function moveAsset(id: string, direction: -1 | 1) {
+    setAssets((current) => {
+      const index = current.findIndex((asset) => asset.id === id);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
+      const next = [...current];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return renumberAssets(next);
+    });
+    setOutputUrl("");
   }
 
   function clearAssets() {
@@ -227,6 +267,18 @@ export function MovieMaker() {
               placeholder="例: 集中して勉強している場面 / 先生の激励 / 集合写真"
               className="mb-4 w-full rounded-md border border-line px-3 py-2 text-sm"
             />
+            <div className="mb-4 flex flex-wrap gap-2">
+              {sceneQuickNotes.map((note) => (
+                <button
+                  key={note}
+                  type="button"
+                  onClick={() => setBatchSceneNote(note)}
+                  className="rounded-md border border-line px-3 py-1.5 text-xs font-medium hover:border-accent hover:text-accent"
+                >
+                  {note}
+                </button>
+              ))}
+            </div>
             <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-line bg-paper px-5 py-7 text-center transition hover:border-accent">
               <Upload className="mb-3 h-8 w-8 text-accent" />
               <span className="font-medium">写真・動画を選択</span>
@@ -252,6 +304,18 @@ export function MovieMaker() {
               placeholder="例: 前半は緊張感、後半は仲間との達成感を強めたい。最後は保護者への感謝で締めたい。"
               className="min-h-24 w-full rounded-md border border-line px-3 py-2 text-sm leading-6"
             />
+            <div className="mt-3 flex flex-wrap gap-2">
+              {storyQuickInstructions.map((instruction) => (
+                <button
+                  key={instruction}
+                  type="button"
+                  onClick={() => setStoryInstruction((current) => appendInstruction(current, instruction))}
+                  className="rounded-md border border-line px-3 py-1.5 text-xs font-medium hover:border-accent hover:text-accent"
+                >
+                  {instruction}
+                </button>
+              ))}
+            </div>
           </section>
 
           <section className="rounded-md border border-line bg-white p-5 shadow-soft">
@@ -282,6 +346,18 @@ export function MovieMaker() {
               placeholder="例: オープニングは静かに、後半の集合写真から少し盛り上げたい。"
               className="mt-3 min-h-20 w-full rounded-md border border-line px-3 py-2 text-sm leading-6"
             />
+            <div className="mt-3 flex flex-wrap gap-2">
+              {bgmQuickNotes.map((note) => (
+                <button
+                  key={note}
+                  type="button"
+                  onClick={() => setBgmNote((current) => appendInstruction(current, note))}
+                  className="rounded-md border border-line px-3 py-1.5 text-xs font-medium hover:border-coral hover:text-coral"
+                >
+                  {note}
+                </button>
+              ))}
+            </div>
           </section>
 
           <section className="rounded-md border border-line bg-white p-5 shadow-soft">
@@ -309,9 +385,39 @@ export function MovieMaker() {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
-                        {asset.type === "image" ? <ImageIcon className="h-4 w-4" /> : <Film className="h-4 w-4" />}
-                        {asset.order}番目
+                      <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold">
+                        <span className="inline-flex items-center gap-2">
+                          {asset.type === "image" ? <ImageIcon className="h-4 w-4" /> : <Film className="h-4 w-4" />}
+                          {asset.order}番目
+                        </span>
+                        <span className="inline-flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => moveAsset(asset.id, -1)}
+                            disabled={asset.order === 1}
+                            className="rounded border border-line p-1 hover:border-accent disabled:opacity-35"
+                            title="上へ"
+                          >
+                            <ArrowUp className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveAsset(asset.id, 1)}
+                            disabled={asset.order === assets.length}
+                            className="rounded border border-line p-1 hover:border-accent disabled:opacity-35"
+                            title="下へ"
+                          >
+                            <ArrowDown className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeAsset(asset.id)}
+                            className="rounded border border-line p-1 hover:border-coral hover:text-coral"
+                            title="削除"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </span>
                       </div>
                       <p className="truncate text-sm text-ink" title={asset.file.name}>
                         {asset.file.name}
