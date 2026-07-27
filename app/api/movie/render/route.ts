@@ -2,6 +2,8 @@ import path from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
 import { organizeAssetsForMvp } from "@/lib/analysis/organizeAssets";
+import { isValidAccessPassword } from "@/lib/security/access";
+import { cleanupExpiredFiles } from "@/lib/video/cleanup";
 import { ensureStorageDirs, isVercelRuntime, publicUploadDir, uploadDir } from "@/lib/video/paths";
 import { renderMovie } from "@/lib/video/renderMovie";
 import type { AssetKind, UploadedAsset } from "@/lib/video/types";
@@ -55,8 +57,10 @@ async function makeVideoDataUrl(outputPath: string) {
 export async function POST(request: Request) {
   try {
     await ensureStorageDirs();
+    await cleanupExpiredFiles();
 
     const formData = await request.formData();
+    const accessPassword = String(formData.get("accessPassword") ?? "");
     const templateId = String(formData.get("templateId") ?? "exam-camp-emotional");
     const files = formData.getAll("assets").filter((value): value is File => value instanceof File);
     const sceneNotes = formData.getAll("sceneNotes").map((value) => String(value ?? ""));
@@ -67,6 +71,10 @@ export async function POST(request: Request) {
     const storyInstruction = String(formData.get("storyInstruction") ?? "");
     const editInstruction = String(formData.get("editInstruction") ?? "");
     const jobId = crypto.randomUUID();
+
+    if (!isValidAccessPassword(accessPassword)) {
+      return NextResponse.json({ error: "パスワードが違います。先生用の共通パスワードを入力してください。" }, { status: 401 });
+    }
 
     if (files.length === 0) {
       return NextResponse.json({ error: "画像または動画ファイルをアップロードしてください。" }, { status: 400 });

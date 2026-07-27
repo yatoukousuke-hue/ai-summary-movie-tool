@@ -4,7 +4,8 @@ services:
     runtime: node
     plan: free
     buildCommand: npm ci && npm run build
-    startCommand: npm start
+    startCommand: npm start -- -H 0.0.0.0 -p $PORT
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
@@ -12,3 +13,7 @@ services:
         value: "false"
       - key: RETURN_VIDEO_DATA_URL
         value: "true"
+      - key: FILE_RETENTION_HOURS
+        value: "24"
+      - key: APP_ACCESS_PASSWORD
+        sync: false

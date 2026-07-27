@@ -75,6 +75,7 @@ function appendInstruction(current: string, addition: string) {
 
 export function MovieMaker() {
   const [templateId, setTemplateId] = useState(movieTemplates[0].id);
+  const [accessPassword, setAccessPassword] = useState("");
   const [assets, setAssets] = useState<LocalAsset[]>([]);
   const [batchSceneNote, setBatchSceneNote] = useState("");
   const [bgm, setBgm] = useState<File | null>(null);
@@ -159,6 +160,7 @@ export function MovieMaker() {
     setProgress("uploading");
 
     const formData = new FormData();
+    formData.append("accessPassword", accessPassword);
     formData.append("templateId", templateId);
     formData.append("storyInstruction", storyInstruction);
     formData.append("editInstruction", options?.reedit ? editInstruction : "");
@@ -211,6 +213,18 @@ export function MovieMaker() {
 
       <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
         <aside className="space-y-5">
+          <section className="rounded-md border border-line bg-white p-5 shadow-soft">
+            <h2 className="mb-3 text-lg font-semibold">先生用パスワード</h2>
+            <input
+              value={accessPassword}
+              onChange={(event) => setAccessPassword(event.target.value)}
+              type="password"
+              placeholder="共通パスワード"
+              className="w-full rounded-md border border-line px-3 py-2 text-sm"
+            />
+            <p className="mt-2 text-sm leading-6 text-slate-600">本番ではRenderの環境変数 APP_ACCESS_PASSWORD で設定します。</p>
+          </section>
+
           <section className="rounded-md border border-line bg-white p-5 shadow-soft">
             <h2 className="mb-3 text-lg font-semibold">テンプレート選択</h2>
             <div className="space-y-2">
