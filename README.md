@@ -87,13 +87,26 @@ VercelはUI確認用のデモ公開先として使えます。ただし、サー
 
 `render.yaml` を用意しています。GitHubへpushしたあと、Render DashboardでBlueprintとして読み込むとWeb Serviceを作れます。Renderでは `RETURN_VIDEO_DATA_URL=true` を設定しているため、生成mp4をAPIレスポンスとしてブラウザに返します。
 
+Blueprint作成画面を直接開く場合:
+
+https://dashboard.render.com/blueprint/new?repo=https://github.com/yatoukousuke-hue/ai-summary-movie-tool
+
 Render Dashboardでの手順:
 
 1. GitHubリポジトリをRenderに接続します。
 2. Blueprintからこのリポジトリの `render.yaml` を読み込みます。
-3. `APP_ACCESS_PASSWORD` に先生用の共通パスワードを設定します。
+3. `APP_ACCESS_PASSWORD` に先生用の共通パスワードを設定します。この値はGitHubへ保存しないでください。
 4. `FILE_RETENTION_HOURS` は初期値24時間です。必要に応じて短くできます。
 5. デプロイ後、`/api/health` がOKになることを確認します。
+
+本番デプロイ時にRenderで設定する環境変数:
+
+```env
+APP_ACCESS_PASSWORD=先生用の共通パスワード
+ENABLE_AI_ANALYSIS=false
+RETURN_VIDEO_DATA_URL=true
+FILE_RETENTION_HOURS=24
+```
 
 ## 本番向けの保護機能
 
