@@ -5,7 +5,7 @@ import { organizeAssetsForMvp } from "@/lib/analysis/organizeAssets";
 import { isValidAccessPassword } from "@/lib/security/access";
 import { cleanupExpiredFiles } from "@/lib/video/cleanup";
 import { ensureStorageDirs, isVercelRuntime, publicUploadDir, uploadDir } from "@/lib/video/paths";
-import { renderMovie } from "@/lib/video/renderMovie";
+import { renderMovie } from "@/lib/video/render-movie";
 import type { AssetKind, UploadedAsset } from "@/lib/video/types";
 
 export const runtime = "nodejs";
